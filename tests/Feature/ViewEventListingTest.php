@@ -17,7 +17,7 @@ class ViewEventListingTest extends TestCase
     /** @test */
     public function a_user_can_view_a_published_event()
     {
-        // Arrange
+        // Arrange - create a published event
         $event = Event::factory()->published()->create([
             'name' => 'School Play',
             'date' => Carbon::parse('2021-01-31 7:00pm'),
@@ -29,10 +29,10 @@ class ViewEventListingTest extends TestCase
             'additional_information' => 'Refreshments available for purchase'
         ]);
 
-        // Act
+        // Act - visit event endpoint
         $response = $this->get('/events/' . $event->id);
 
-        // Assert
+        // Assert - 200 status and all fields visible
         $response->assertStatus(200);
         $response->assertSee('School Play');
         $response->assertSee('January 31, 2021');
@@ -48,13 +48,13 @@ class ViewEventListingTest extends TestCase
     /** @test */
     public function a_user_cannot_view_an_unpublished_event()
     {
-        // Arrange
+        // Arrange - create an unpublished event
         $event = Event::factory()->unpublished()->create();
 
-        // Act
+        // Act - visit event endpoint
         $response = $this->get('/events/' . $event->id);
 
-        // Assert
+        // Assert - 404 status
         $response->assertStatus(404);
     }
 }
