@@ -41,11 +41,11 @@ class PurchaseTicketsTest extends TestCase
         // Arrange - create an event
         $event = Event::factory()->published()->create([
             'ticket_price' => 2499
-        ]);
+        ])->addTickets(3);
 
         // Act - purchase tickets
         $response = $this->orderTickets($event, [
-            'email' => 'todd@test.com',
+            'email' => 'todd@todd.com',
             'ticket_quantity' => 3,
             'payment_token' => $this->paymentGateway->getValidTestToken()
         ]);
@@ -58,18 +58,18 @@ class PurchaseTicketsTest extends TestCase
         $this->assertEquals(7497, $this->paymentGateway->totalCharges());
 
         // Make sure an order exists for that customer
-        $order = $event->orders()->where('email', 'todd@test.com')->first();
-        $this->assertNotNull($order);
+        $this->assertTrue($event->hasOrderFor('todd@todd.com'));
 
         // Make sure the order has the right amount of tickets
-        $this->assertEquals(3, $order->tickets->count());
+        //$this->assertEquals(3, $order->tickets->count());
+        $this->assertEquals(3, $event->ordersFor('todd@todd.com')->first()->ticketsQuantity());
     }
 
     /** @test */
     function a_customer_cannot_purchase_tickets_to_an_unpublished_event()
     {
         // Arrange - Create an unpublished event
-        $event = Event::factory()->unpublished()->create();
+        $event = Event::factory()->unpublished()->create()->addTickets(3);
 
         // Act - purchase tickets
         $response = $this->orderTickets($event, [
@@ -83,7 +83,7 @@ class PurchaseTicketsTest extends TestCase
         $response->assertStatus(404);
 
         // No orders were created
-        $this->assertEquals(0, $event->orders()->count());
+        $this->assertFalse($event->hasOrderFor('todd@todd.com'));
 
         // No charges are made
         $this->assertEquals(0, $this->paymentGateway->totalCharges());
@@ -177,7 +177,7 @@ class PurchaseTicketsTest extends TestCase
         // Arrange - create an event
         $event = Event::factory()->published()->create([
             'ticket_price' => 2500
-        ]);
+        ])->addTickets(3);
 
         // Act - purchase tickets
         $response = $this->orderTickets($event, [
@@ -191,7 +191,33 @@ class PurchaseTicketsTest extends TestCase
         $response->assertStatus(422);
 
         // No order was created
-        $order = $event->orders()->where('email', 'todd@todd.com')->first();
-        $this->assertNull($order);
+        $this->assertFalse($event->hasOrderFor('todd@todd.com'));
+    }
+
+    /** @test */
+    function cannot_purchase_more_tickets_than_remain()
+    {
+        // Arrange - create an event with a certain amount of tickets
+        $event = Event::factory()->published()->create()->addTickets(50);
+
+        // Act - purchase tickets
+        $response = $this->orderTickets($event, [
+            'email' => 'todd@todd.com',
+            'ticket_quantity' => 51,
+            'payment_token' => 'INVALID_TOKEN'
+        ]);
+
+        // Assert
+        // 422 status code
+        $response->assertStatus(422);
+
+        // No orders created
+        $this->assertFalse($event->hasOrderFor('todd@todd.com'));
+
+        // No charges were made
+        $this->assertEquals(0, $this->paymentGateway->totalCharges());
+
+        // There are still 50 tickets left
+        $this->assertEquals(50, $event->ticketsRemaining());
     }
 }

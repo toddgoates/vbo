@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\NotEnoughTicketsException;
 use App\Exceptions\PaymentFailedException;
 use App\Services\Billing\PaymentGateway;
 use Illuminate\Http\Request;
@@ -27,13 +28,15 @@ class EventOrdersController extends Controller
         ]);
 
         try {
+            $order = $event->orderTickets($request['email'], $request['ticket_quantity']);
             $this->paymentGateway->charge(
                 $request['ticket_quantity'] * $event->ticket_price,
                 $request['payment_token']
             );
-
-            $order = $event->orderTickets($request['email'], $request['ticket_quantity']);
         } catch (PaymentFailedException $e) {
+            $order->cancel();
+            return response()->json([], 422);
+        } catch (NotEnoughTicketsException $e) {
             return response()->json([], 422);
         }
 

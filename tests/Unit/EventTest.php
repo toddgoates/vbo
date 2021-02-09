@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use App\Exceptions\NotEnoughTicketsException;
 use App\Models\Event;
 use Tests\TestCase;
 use Carbon\Carbon;
@@ -68,13 +69,79 @@ class EventTest extends TestCase
     public function can_order_event_tickets()
     {
         // Arrange - Create an event
-        $event = Event::factory()->create();
+        $event = Event::factory()->create()->addTickets(3);
 
         // Act - order tickets
         $order = $event->orderTickets('todd@todd.com', 3);
 
         //Assert - order contains email and has correct ticket quantity
         $this->assertEquals('todd@todd.com', $order->email);
-        $this->assertEquals(3, $order->tickets()->count());
+        $this->assertEquals(3, $order->ticketsQuantity());
+    }
+
+    /** @test */
+    function can_add_tickets()
+    {
+        // Arrange - create an event
+        $event = Event::factory()->create();
+
+        // Act - add tickets to it
+        $event->addTickets(50);
+
+        // Assert - the event has the correct amount of tickets
+        $this->assertEquals(50, $event->ticketsRemaining());
+    }
+
+    /** @test */
+    function tickets_remaining_excludes_tickets_associated_with_order()
+    {
+        // Arrange - create an event with tickets
+        $event = Event::factory()->create()->addTickets(50);
+
+        // Act - order tickets
+        $event->orderTickets('todd@todd.com', 30);
+
+        // Assert - the correct amount of tickets are available
+        $this->assertEquals(20, $event->ticketsRemaining());
+    }
+
+    /** @test */
+    function trying_to_purchase_too_many_tickets_throws_an_exception()
+    {
+        // Arrange - create an event with tickets
+        $event = Event::factory()->create()->addTickets(50);
+
+        // Act - order tickets
+        try {
+            $event->orderTickets('todd@todd.com', 51);
+        } catch (NotEnoughTicketsException $e) {
+            // Assert - an order is not created and the same number of tickets remain
+            $this->assertFalse($event->hasOrderFor('todd@todd.com'));
+            $this->assertEquals(50, $event->ticketsRemaining());
+            return;
+        }
+
+        $this->fail('Order succeeded even though there were not enough tickets');
+    }
+
+    /** @test */
+    function cannot_order_tickets_that_have_already_been_purchased()
+    {
+        // Arrange - create an event
+        $event = Event::factory()->create()->addTickets(10);
+
+        // Act - Purchase tickets, then have next person try to order more than what remain
+        $event->orderTickets('todd@todd.com', 8);
+
+        try {
+            $event->orderTickets('toddjr@todd.com', 3);
+        } catch (NotEnoughTicketsException $e) {
+            // Assert - no order created for jr and the correct number of tickets remain
+            $this->assertFalse($event->hasOrderFor('toddjr@todd.com'));
+            $this->assertEquals(2, $event->ticketsRemaining());
+            return;
+        }
+
+        $this->fail('Order succeeded even though there were not enough tickets');
     }
 }
