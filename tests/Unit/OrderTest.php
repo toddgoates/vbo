@@ -12,6 +12,24 @@ class OrderTest extends TestCase
     use DatabaseMigrations;
 
     /** @test */
+    function converting_to_an_array()
+    {
+        // Arrange - create an event with tickets and order all of them
+        $event = Event::factory()->create(['ticket_price' => 1200])->addTickets(5);
+        $order = $event->orderTickets('todd@todd.com', 5);
+
+        // Act - convert order to an array
+        $result = $order->toArray();
+
+        // Assert - array looks like what we're expecting
+        $this->assertEquals([
+            'email' => 'todd@todd.com',
+            'ticket_quantity' => 5,
+            'amount' => 6000,
+        ], $result);
+    }
+
+    /** @test */
     function tickets_are_released_when_an_order_is_cancelled()
     {
         // Arrange - create an event with tickets

@@ -54,6 +54,13 @@ class PurchaseTicketsTest extends TestCase
         // 201 HTTP response status
         $response->assertStatus(201);
 
+        // The order returned contains expected data
+        $response->assertJson([
+            'email' => 'todd@todd.com',
+            'ticket_quantity' => 3,
+            'amount' => 7497
+        ]);
+
         // Make sure the customer was charged the correct amount
         $this->assertEquals(7497, $this->paymentGateway->totalCharges());
 
@@ -62,7 +69,7 @@ class PurchaseTicketsTest extends TestCase
 
         // Make sure the order has the right amount of tickets
         //$this->assertEquals(3, $order->tickets->count());
-        $this->assertEquals(3, $event->ordersFor('todd@todd.com')->first()->ticketsQuantity());
+        $this->assertEquals(3, $event->ordersFor('todd@todd.com')->first()->ticketQuantity());
     }
 
     /** @test */

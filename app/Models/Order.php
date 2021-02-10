@@ -11,12 +11,17 @@ class Order extends Model
 
     protected $guarded = [];
 
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
+    }
+
     public function tickets()
     {
         return $this->hasMany(Ticket::class);
     }
 
-    public function ticketsQuantity()
+    public function ticketQuantity()
     {
         return $this->tickets()->count();
     }
@@ -28,5 +33,14 @@ class Order extends Model
         }
 
         $this->delete();
+    }
+
+    public function toArray()
+    {
+        return [
+            'email' => $this->email,
+            'ticket_quantity' => $this->ticketQuantity(),
+            'amount' => $this->ticketQuantity() * $this->event->ticket_price
+        ];
     }
 }

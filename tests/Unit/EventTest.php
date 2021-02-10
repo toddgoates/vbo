@@ -76,7 +76,7 @@ class EventTest extends TestCase
 
         //Assert - order contains email and has correct ticket quantity
         $this->assertEquals('todd@todd.com', $order->email);
-        $this->assertEquals(3, $order->ticketsQuantity());
+        $this->assertEquals(3, $order->ticketQuantity());
     }
 
     /** @test */
