@@ -7,6 +7,8 @@ use App\Exceptions\PaymentFailedException;
 use App\Services\Billing\PaymentGateway;
 use Illuminate\Http\Request;
 use App\Models\Event;
+use App\Models\Order;
+use App\Services\Reservation;
 
 class EventOrdersController extends Controller
 {
@@ -28,27 +30,25 @@ class EventOrdersController extends Controller
         ]);
 
         try {
-            /**
-             * TODO: Redesign flow
-             * This will be done in the next module
-             * 
-             * Find some tickets
-             * Charge the customer for them
-             * Create an order if charge is successful
-             */
+            $tickets = $event->findTickets($request['ticket_quantity']);
+            $reservation = new Reservation($tickets);
 
-            $order = $event->orderTickets($request['email'], $request['ticket_quantity']);
             $this->paymentGateway->charge(
-                $request['ticket_quantity'] * $event->ticket_price,
+                $reservation->totalCost(),
                 $request['payment_token']
+            );
+
+            $order = Order::forTickets(
+                $tickets,
+                request('email'),
+                $reservation->totalCost()
             );
 
             return response()->json($order, 201);
         } catch (PaymentFailedException $e) {
-            $order->cancel();
-            return response()->json([], 422);
+            return response()->json($e, 422);
         } catch (NotEnoughTicketsException $e) {
-            return response()->json([], 422);
+            return response()->json($e, 422);
         }
     }
 }

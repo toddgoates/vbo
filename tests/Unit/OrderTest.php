@@ -2,14 +2,38 @@
 
 namespace Tests\Unit;
 
+use Tests\TestCase;
 use App\Models\Event;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
-use Tests\TestCase;
 
 class OrderTest extends TestCase
 {
     use DatabaseMigrations;
+
+    /** @test */
+    function creating_an_order_from_tickets_email_and_amount()
+    {
+        // Arrange - create an event with tickets
+        $event = Event::factory()->create()->addTickets(5);
+        $this->assertEquals(5, $event->ticketsRemaining());
+
+        // Act - place an order for 3 tickets
+        $order = Order::forTickets($event->findTickets(3), 'todd@todd.com', 3600);
+
+        // Assert
+        // Order exists for the user
+        $this->assertEquals('todd@todd.com', $order->email);
+
+        // The correct tickets were ordered
+        $this->assertEquals(3, $order->ticketQuantity());
+
+        // The correct amount was charged
+        $this->assertEquals(3600, $order->amount);
+
+        // The correct number of tickets remain
+        $this->assertEquals(2, $event->ticketsRemaining());
+    }
 
     /** @test */
     function converting_to_an_array()

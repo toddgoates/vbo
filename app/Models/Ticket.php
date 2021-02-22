@@ -11,6 +11,11 @@ class Ticket extends Model
 
     protected $guarded = [];
 
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
+    }
+
     public function scopeAvailable($query)
     {
         return $query->whereNull('order_id');
@@ -19,5 +24,10 @@ class Ticket extends Model
     public function release()
     {
         $this->update(['order_id' => null]);
+    }
+
+    public function getPriceAttribute()
+    {
+        return $this->event->ticket_price;
     }
 }
